@@ -52,7 +52,7 @@ class InMemoryScenarioStore:
                 id=jobId,
                 config=config,
                 status=ScenarioStatus.PENDING,
-                created_at=datetime.now(timezone.utc)
+                createdAt=datetime.now(timezone.utc)
             )
             self._jobs[jobId] = record
             
@@ -77,7 +77,7 @@ class InMemoryScenarioStore:
                     f"{record.status.value} to running"
                 )
             record.status = ScenarioStatus.RUNNING
-            record.error_message = None
+            record.errorMessage = None
     
     def changeToCompleted(self, jobId: str, scenario: GeneratedScenario) -> None:
         with self._lock:
@@ -90,9 +90,9 @@ class InMemoryScenarioStore:
                 )
             record.scenario = scenario
             record.status = ScenarioStatus.COMPLETED
-            record.error_message = None
+            record.errorMessage = None
     
-    def changeToFailed(self, jobId: str, error_message: str) -> None:
+    def changeToFailed(self, jobId: str, errorMessage: str) -> None:
         with self._lock:
             record = self._getExistingJob(jobId)
             if record.status not in {
@@ -104,7 +104,7 @@ class InMemoryScenarioStore:
                 )
             record.status = ScenarioStatus.FAILED
             record.scenario = None
-            record.error_message = error_message
+            record.errorMessage = errorMessage
     
     def _getExistingJob(self, jobId: str) -> ScenarioJobRecord:
         record = self._jobs.get(jobId)

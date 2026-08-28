@@ -17,6 +17,11 @@ from app.schemas import (
     ScenarioJobResponse,
 )
 
+from app.store import (
+    InMemoryScenarioStore,
+    ScenarioJobRecord,
+)
+
 app = FastAPI(
     title="Synthetic Forensic Scenario Generator",
     description="A local REST API that generates deterministic synthetic credential-theft scenarios",
@@ -25,6 +30,27 @@ app = FastAPI(
 
 _scenarioStore = InMemoryScenarioStore()
 _jobManager = ScenarioJobManager(_scenarioStore)
+
+
+
+def _buildJobResponse(
+    job: ScenarioJobRecord,
+) -> ScenarioJobResponse:
+    errorResponse: ErrorResponse | None = None
+
+    if job.errorMessage is not None:
+        errorResponse = ErrorResponse(
+            error="generation_failed",
+            message=job.errorMessage,
+        )
+
+    return ScenarioJobResponse(
+        id=job.id,
+        status=job.status,
+        createdAt=job.createdAt,
+        scenario=job.scenario,
+        error=errorResponse,
+    )
 
 @app.get(
     "/health",
@@ -60,7 +86,7 @@ def createScenario(
     return _buildJobResponse(job)
 
 @app.get(
-    "/api/scenarios/{job_id}",
+    "/api/scenarios/{jobId}",
     response_model=ScenarioJobResponse,
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
@@ -71,12 +97,12 @@ def createScenario(
         }
     },
 )
-def getScenario(job_id: str) -> ScenarioJobResponse | JSONResponse:
-    job = _scenarioStore.getJob(job_id)
+def getScenario(jobId: str) -> ScenarioJobResponse | JSONResponse:
+    job = _scenarioStore.getJob(jobId)
     if job is None:
         errorResponse = ErrorResponse(
             error="scenario_not_found",
-            message=f"Scenario ID '{job_id}' not found.",
+            message=f"Scenario ID '{jobId}' not found.",
         )
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
