@@ -1,0 +1,86 @@
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    Request, 
+    Response,
+    status
+)
+
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from app.job_manager import ScenarioJobManager
+from app.schemas import (
+    ErrorResponse,
+    HealthResponse,
+    ScenarioCreateRequest,
+    ScenarioJobResponse,
+)
+
+app = FastAPI(
+    title="Synthetic Forensic Scenario Generator",
+    description="A local REST API that generates deterministic synthetic credential-theft scenarios",
+    version="1.0.0",
+)
+
+_scenarioStore = InMemoryScenarioStore()
+_jobManager = ScenarioJobManager(_scenarioStore)
+
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    status_code=status.HTTP_200_OK,
+)    
+def healthCheck() -> HealthResponse:
+    return HealthResponse(status="ok")
+
+@app.post(
+    "/api/scenarios",
+    response_model=ScenarioJobResponse,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "model": ErrorResponse,
+            "description": "Invalid scenario configuration.",
+        }
+    },
+)
+
+def createScenario(
+    config: ScenarioCreateRequest,
+    response: Response,
+    backgroundTasks: BackgroundTasks,
+) -> ScenarioJobResponse:
+    job = _jobManager.createJob(config)
+    backgroundTasks.add_task(_jobManager.runJob, job.id)
+    
+    response.headers["Location"] = f"/api/scenarios/{job.id}"
+    
+    return _buildJobResponse(job)
+
+@app.get(
+    "/api/scenarios/{job_id}",
+    response_model=ScenarioJobResponse,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "Scenario ID not found.",
+        }
+    },
+)
+def getScenario(job_id: str) -> ScenarioJobResponse | JSONResponse:
+    job = _scenarioStore.getJob(job_id)
+    if job is None:
+        errorResponse = ErrorResponse(
+            error="scenario_not_found",
+            message=f"Scenario ID '{job_id}' not found.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content=errorResponse.model_dump(),
+        )
+    
+    return _buildJobResponse(job)

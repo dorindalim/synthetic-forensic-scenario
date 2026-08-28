@@ -21,9 +21,9 @@ class ScenarioJobRecord:
     id: str
     config: ScenarioCreateRequest
     status: ScenarioStatus
-    created_at: datetime
+    createdAt: datetime
     scenario: GeneratedScenario | None = None
-    error_message: str | None = None
+    errorMessage: str | None = None
     
 class InMemoryScenarioStore:
     # data lost when app stops
