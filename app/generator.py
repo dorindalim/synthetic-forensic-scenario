@@ -164,3 +164,81 @@ def _generateRequiredEvents(
             insertion_order=4
         ),
     ]
+    
+def _generateBackgroundEvent(
+    rng: random.Random,
+    users: list[ForensicUser],
+    devices: list[ForensicDevice],
+    baseTimestamp: datetime,
+    latestTimestamp: datetime,
+    insertion_order: int
+) -> _EventDraft:
+    # generate a single background event that is not part of the credential theft attack
+    eventType = rng.choice(
+        (
+            "file_access",
+            "dns_query",
+            "system_service",
+            "user_activity",
+        )
+    )
+    actor = rng.choice(users)
+    device = rng.choice(devices)
+    
+    # bg activity can happen beore during or after attack
+    availableSeconds = int((latestTimestamp - baseTimestamp + timedelta(minutes=10)).total_seconds())
+    
+    timestamp = baseTimestamp + timedelta(seconds=rng.randint(0, availableSeconds))
+    
+    if eventType == "file_access":
+        details: dict[str, Any] = {
+            "path": (
+                f"C:\\Users\\{actor.username}\\Documents\\"
+                f"report-{rng.randint(1, 20)}.docx"
+            ),
+            "operation": rng.choice(("open", "read", "close")),
+        }
+
+    elif eventType == "dns_query":
+        details = {
+            "query": rng.choice(
+                (
+                    "updates.example",
+                    "intranet.example",
+                    "files.example",
+                )
+            ),
+            "resolved_ip": f"192.0.2.{rng.randint(1, 254)}",
+        }
+
+    elif eventType == "system_service":
+        details = {
+            "service": rng.choice(
+                (
+                    "update_service",
+                    "backup_service",
+                    "endpoint_monitor",
+                )
+            ),
+            "state": rng.choice(("started", "stopped", "running")),
+        }
+
+    else:
+        details = {
+            "action": rng.choice(
+                (
+                    "screen_unlock",
+                    "application_open",
+                    "session_idle",
+                )
+            )
+        }
+
+    return _EventDraft(
+        event_type=eventType,
+        timestamp=timestamp,
+        actor_user_id=actor.id,
+        device_id=device.id,
+        details=details,
+        insertion_order=insertion_order,
+    )
