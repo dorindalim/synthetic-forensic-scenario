@@ -243,7 +243,7 @@ def _generateBackgroundEvent(
         insertion_order=insertion_order,
     )
     
-def _generateScenario(
+def generateScenario(
     config: ScenarioCreateRequest,
 ) -> GeneratedScenario:
     # generated 1 complete deterministic credential-theft scenario
