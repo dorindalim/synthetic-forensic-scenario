@@ -112,3 +112,48 @@ def _validateRequiredAttackChain(scenario: GeneratedScenario, errors: list[str])
         requiredPosition += 1
     if requiredPosition != len(REQUIRED_ATTACK_CHAIN):
         errors.append("No complete chronological sequence of required attack chain events found in the scenario")
+        
+def validateScenarioInvariants(scenario: GeneratedScenario, config: ScenarioCreateRequest) -> list[str]:
+    # make sure the generated scenario meets the invariants, return list of errors if any
+    errors: list[str] = []
+    
+    _validateRequestedCounts(
+        scenario=scenario,
+        config=config,
+        errors=errors
+    )
+    
+    _validateMetadata(
+        scenario=scenario,
+        config=config,
+        errors=errors
+    )
+    
+    _validateUniqueIds(
+        scenario=scenario,
+        errors=errors
+    )
+    
+    _validateEvent(
+        scenario=scenario,
+        errors=errors
+    )
+    
+    _validateEventTimestamps(
+        scenario=scenario,
+        errors=errors
+    )
+    
+    _validateRequiredAttackChain(
+        scenario=scenario,
+        errors=errors
+    )   
+    
+    return errors
+
+def assertScenarioInvariants(scenario: GeneratedScenario, config: ScenarioCreateRequest) -> None:
+    # make sure the generated scenario meets the invariants, raise error if any
+    errors = validateScenarioInvariants(scenario=scenario, config=config)
+    if errors:
+        message = "; ".join(errors)
+        raise ScenarioInvariantError(message)
