@@ -86,3 +86,81 @@ def _generateDevices(count: int, rng: random.Random) -> list[ForensicDevice]:
             )
         )
     return devices
+
+def _generateRequiredEvents(
+    rng: random.Random,
+    baseTimestamp: datetime,
+    victimUser: ForensicUser,
+    victimDevice: ForensicDevice,
+) -> list[_EventDraft]:
+    # generate the 5 required events for a credential theft scenario
+    
+    eventDraft: list[_EventDraft] = []
+    
+    # every required event occurs 1-5 mins after prev event
+    timestamps: list[datetime] = []
+    currentTime = baseTimestamp
+    for _ in range(5):
+        currentTime += timedelta(minutes=rng.randint(1, 5))
+        timestamps.append(currentTime)
+    return [
+        _EventDraft(
+            event_type="authentication",
+            timestamp=timestamps[0],
+            actor_user_id=victimUser.id,
+            device_id=victimDevice.id,
+            details={
+                "result": "success",
+                "method": "password",
+                "source_ip": f"198.51.100.{rng.randint(1, 254)}",
+            },
+            insertion_order=0
+        ),
+        _EventDraft(
+            event_type="process_execution",
+            timestamp=timestamps[1],
+            actor_user_id=victimUser.id,
+            device_id=victimDevice.id,
+            details={
+                "process_name": rng.choice(("powershell.exe", "cmd.exe", "explorer.exe")),
+                "parent_process": "explorer.exe",
+                "process_id": rng.randint(1000, 9999),
+            },
+            insertion_order=1
+        ),
+        _EventDraft(
+            event_type="credential_access",
+            timestamp=timestamps[2],
+            actor_user_id=victimUser.id,
+            device_id=victimDevice.id,
+            details={
+                "method": rng.choice(("browser_credential_store", "cached_credentials", "memory_credentials")),
+                "target": "local_user_credentials",
+            },
+            insertion_order=2
+        ),
+        _EventDraft(
+            event_type="network_connection",
+            timestamp=timestamps[3],
+            actor_user_id=victimUser.id,
+            device_id=victimDevice.id,
+            details={
+                "destination_ip": f"203.0.113.{rng.randint(1, 254)}",
+                "destination_port": 443,
+                "protocol": "tcp",
+            },
+            insertion_order=3
+        ),
+        _EventDraft(
+            event_type="data_exfiltration",
+            timestamp=timestamps[4],
+            actor_user_id=victimUser.id,
+            device_id=victimDevice.id,
+            details={
+                "channel": "https",
+                "data_type": "credential_archive",
+                "bytes_transferred": rng.randint(50_000, 5_000_000),
+            },
+            insertion_order=4
+        ),
+    ]
