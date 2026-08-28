@@ -66,3 +66,48 @@ class InMemoryScenarioStore:
             if record is None:
                 return None
             return deepcopy(record)
+        
+    def changeToRunning(self, jobId: str) -> None:
+        with self._lock:
+            record = self._getExistingJob(jobId)
+            # anything but a pending is not allowed
+            if record.status != ScenarioStatus.PENDING:
+                raise RuntimeError(
+                    f"Job {jobId} cannot move from "
+                    f"{record.status.value} to running"
+                )
+            record.status = ScenarioStatus.RUNNING
+            record.error_message = None
+    
+    def changeToCompleted(self, jobId: str, scenario: GeneratedScenario) -> None:
+        with self._lock:
+            record = self._getExistingJob(jobId)
+            # anything but a running is not allowed
+            if record.status != ScenarioStatus.RUNNING:
+                raise RuntimeError(
+                    f"Job {jobId} cannot move from "
+                    f"{record.status.value} to completed"
+                )
+            record.scenario = scenario
+            record.status = ScenarioStatus.COMPLETED
+            record.error_message = None
+    
+    def changeToFailed(self, jobId: str, error_message: str) -> None:
+        with self._lock:
+            record = self._getExistingJob(jobId)
+            if record.status not in {
+                ScenarioStatus.PENDING, ScenarioStatus.RUNNING,
+            }:
+                raise RuntimeError(
+                    f"Job {jobId} cannot move from "
+                    f"{record.status.value} to failed"
+                )
+            record.status = ScenarioStatus.FAILED
+            record.scenario = None
+            record.error_message = error_message
+    
+    def _getExistingJob(self, jobId: str) -> ScenarioJobRecord:
+        record = self._jobs.get(jobId)
+        if record is None:
+            raise KeyError(f"Scenario job {jobId} does not exist")
+        return record
