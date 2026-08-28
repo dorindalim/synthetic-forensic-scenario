@@ -85,7 +85,7 @@ class ScenarioJobResponse(BaseModel):
     # response when a scenario is created or retrieved
     id: str
     status: ScenarioStatus
-    created_at: datetime
+    createdAt: datetime
     # populated after successful generation
     scenario: GeneratedScenario | None = None
     # populated after generated fail
