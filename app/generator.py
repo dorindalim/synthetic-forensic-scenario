@@ -242,3 +242,77 @@ def _generateBackgroundEvent(
         details=details,
         insertion_order=insertion_order,
     )
+    
+def _generateScenario(
+    config: ScenarioCreateRequest,
+) -> GeneratedScenario:
+    # generated 1 complete deterministic credential-theft scenario
+    # same config and seed produce same users, devices and events
+    
+    rng = random.Random(config.seed)
+    
+    users = _generateUsers(config.users, rng)
+    devices = _generateDevices(config.devices, rng)
+    
+    # base time is produced from seed rng, rather than current time, to make the scenario deterministic
+    baseTimestamp = datetime(
+        year = 2025, month = 1, day = 1, tzinfo = timezone.utc
+    ) + timedelta(
+        days=rng.randrange(365), hours=rng.randrange(24), minutes=rng.randrange(60),
+    )
+    
+    # one user and device as victime of the credential theft, the rest are bg users and devices
+    victimUser = rng.choice(users)
+    victimDevice = rng.choice(devices)
+    
+    # create the 5 needed events
+    eventDraft = _generateRequiredEvents(
+        rng=rng,
+        baseTimestamp=baseTimestamp,
+        victimUser=victimUser,
+        victimDevice=victimDevice
+    )
+    
+    attackEndTime = eventDraft[-1].timestamp
+    backgroundEventCount = config.events - len(eventDraft)
+    
+    for i in range(backgroundEventCount):
+        eventDraft.append(
+            _generateBackgroundEvent(
+                rng=rng,
+                baseTimestamp=baseTimestamp,
+                latestTimestamp=attackEndTime,
+                users=users,
+                devices=devices,
+                insertion_order=len(eventDraft)
+            )
+        )
+    
+    # sort all events by timestamp and insertion order, then assign unique event ids
+    eventDraft.sort(key=lambda e: (e.timestamp, e.insertion_order))
+    events = [
+        ForensicEvent(
+            id=f"event-{i:03d}",
+            type=e.event_type,
+            timestamp=e.timestamp,
+            actor_user_id=e.actor_user_id,
+            device_id=e.device_id,
+            details=e.details
+        )
+        for i, e in enumerate(eventDraft, start=1)
+    ]
+    
+    metadata = ScenarioMetaData(
+        scenario=config.scenario,
+        seed=config.seed,
+        requestedUsers=config.users,
+        requestedDevices=config.devices,
+        requestedEvents=config.events
+    )
+    
+    return GeneratedScenario(
+        metadata=metadata,
+        users=users,
+        devices=devices,
+        events=events
+    )
