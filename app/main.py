@@ -31,7 +31,34 @@ app = FastAPI(
 _scenarioStore = InMemoryScenarioStore()
 _jobManager = ScenarioJobManager(_scenarioStore)
 
+@app.exception_handler(RequestValidationError)
+async def handleRequestValidationError(
+    request: Request,
+    exception: RequestValidationError,
+) -> JSONResponse:
+    firstError = exception.errors()[0]
 
+    if firstError["type"] == "json_invalid":
+        message = "Request body has malformed JSON."
+    else:
+        fieldName = ".".join(
+            str(part)
+            for part in firstError["loc"]
+            if part != "body"
+        )
+
+        message = firstError["msg"]
+
+        if fieldName:
+            message = f"{fieldName}: {message}"
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "invalid_configuration",
+            "message": message,
+        },
+    )
 
 def _buildJobResponse(
     job: ScenarioJobRecord,
