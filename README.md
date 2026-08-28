@@ -67,7 +67,10 @@ Interactive Swagger documentation is available at:
 http://127.0.0.1:8000/docs
 ```
 
-Stop the service by pressing `Ctrl+C`.
+
+Keep the Uvicorn terminal open while testing the API. Open a second terminal and navigate to the repository root before running the `curl` commands. If necessary, reactivate the virtual environment in the second terminal.
+
+Run all API test commands in the second terminal. When testing is complete, return to the Uvicorn terminal and press `Ctrl+C` to stop the service.
 
 ### Quick health check
 
